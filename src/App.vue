@@ -1,7 +1,12 @@
 <script setup lang="ts">
-    import { reactive, ref, onMounted } from 'vue'
+    import { reactive, ref, onMounted, nextTick } from 'vue'
     import { parse, parseFragment  } from 'parse5'
+    const visible = ref(false)
+    const checked1 = ref(false)
+    const checked2 = ref(false)
     const tableRef = ref()
+    const inputValue = ref()
+    const modalDomObj = reactive<{ first: any, second: any}>({ first: null, second: null})
     const dataSource = reactive( [
           {
             key: '1',
@@ -32,11 +37,12 @@
             key: 'address',
           },
         ])
-    const observer = (target: any) =>  {
+    const observer = (target: any, callBack?: any) =>  {
         const ob = new MutationObserver(mutations => {
             // console.log(mutations);
             mutations.forEach(mutation => {
-              console.log(mutation)
+              if(callBack) callBack(mutation)
+              // console.log(mutation)
                 // const { type, target, oldValue, attributeName} = mutation;
                 // switch (type) {
                 //     case 'attributes':
@@ -53,8 +59,29 @@
           characterData: true,        //监控目标数据的改变
           characterDataOldValue: true,
           childList: true,
+          // attributeFilter: []
       });
     }
+    const observeElement = (element: any, property: any, callback: any, delay = 0) =>  {
+      let elementPrototype = Object.getPrototypeOf(element);
+      if (elementPrototype.hasOwnProperty(property)) {
+          let descriptor = Object.getOwnPropertyDescriptor(elementPrototype, property);
+          Object.defineProperty(element, property, {
+              get: function() {
+                  return descriptor?.get?.apply(this, arguments);
+              },
+              set: function () {
+                  let oldValue = this[property];
+                 descriptor?.set?.apply(this, arguments);
+                  let newValue = this[property];
+                  if (typeof callback == "function") {
+                      setTimeout(callback.bind(this, oldValue, newValue), delay);
+                  }
+                  return newValue;
+              }
+          });
+      }
+}
     const add = () => {
       dataSource.push({
             key: (dataSource.length + 1).toString(),
@@ -69,9 +96,43 @@
     const modify = () => {
       dataSource[0].age = dataSource[0].age + 1
     }
+    const handleOk = () => {
+      // 序列化，进行比较
+      const modalDom = document.querySelector("*[data-modal-record='true']")
+      modalDomObj.second = parseFragment(modalDom?.innerHTML || "")
+      visible.value = false
+    }
+    const openModal = () => {
+      visible.value = true
+      nextTick(() => {
+        const modalDom = document.querySelector("*[data-modal-record='true']")
+        // 序列化
+        modalDomObj.first = parseFragment(modalDom?.innerHTML || "")
+        const inputList = Array.from(modalDom?.querySelectorAll('input') || []) 
+        inputList.forEach(input => {
+          input.addEventListener("input", function () {
+              console.log("Input value changed via UI. New value: '%s'", this.value);
+          });
+          observeElement(input, "value", function (oldValue: any, newValue: any) {
+            //收集变化的属性
+            console.log("Input value changed via API. Value changed from '%s' to '%s'", oldValue, newValue);
+          });
+        })
+        observer(modalDom, (mutation: any) => {
+           //收集变化的属性
+           // 只监听一次，怎么处理
+           console.log(mutation)
+          //  if(mutation.type === 'characterData') {
+          //    console.log(mutation)
+          //  }
+        })
+      })
+    }
     onMounted(() => {
       const recordTable = document.querySelector("*[data-record='true']")
-      observer(recordTable)
+      observer(recordTable, (mutation: any) => {
+        console.log('table', mutation)
+      })
     //  console.log(parseFragment (recordTable?.innerHTML || ''))
     })
 </script>
@@ -84,7 +145,32 @@
       <a-button @click="deleteColumn">删除一行</a-button>
       <a-button @click="modify">修改一行</a-button>
     </div>
-  
+    <a-modal v-model:visible="visible" title="Basic Modal" @ok="handleOk"  >
+      <div data-modal-record="true">
+        <div style="display: flex;">
+          <span>姓名</span>
+          <input v-model="inputValue"/>
+          <!-- <a-input style="width: 60%;"></a-input> -->
+        </div>
+        <div style="display: flex;">
+          <span>年龄</span>
+          <a-select>
+            <a-select-option value="18">18</a-select-option>
+            <a-select-option value="28">28</a-select-option>
+            <a-select-option value="38">38</a-select-option>
+          </a-select>
+        </div>
+        <div style="display: flex;">
+          <span>地址</span>
+          <div>
+            <a-checkable-tag v-model:checked="checked1">东大街</a-checkable-tag>
+            <a-checkable-tag v-model:checked="checked2">北大街</a-checkable-tag>
+          </div>
+        </div>
+      </div>
+      
+    </a-modal>
+    <a-button @click="openModal">对话框录入数据</a-button>
 </template>
 
 <style scoped>
