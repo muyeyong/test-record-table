@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useReactiveRecord, logAll } from './custom-reactive'
+import { useReactiveRecord } from './custom-reactive'
 import HelloWorld from './components/HelloWorld.vue';
 const { value, log } = useReactiveRecord('王大妈')
 const { value: address } = useReactiveRecord('回龙观')
@@ -7,7 +7,7 @@ const consoleLog = () => {
   console.log(log())
 }
 const consoleAllLog = () => {
-  logAll()
+  // logAll()
 }
 </script>
 
