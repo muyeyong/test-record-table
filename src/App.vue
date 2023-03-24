@@ -1,85 +1,44 @@
 <script setup lang="ts">
-import { useReactiveRecord } from './custom-reactive'
-import HelloWorld from './components/HelloWorld.vue';
-const { value, log } = useReactiveRecord('王大妈')
-const { value: address } = useReactiveRecord('回龙观')
-const consoleLog = () => {
-  console.log(log())
-}
-const consoleAllLog = () => {
-  // logAll()
+/** demo
+ * 表单： 新增 修改 删除
+ * 范围选择： 修改
+ * 下拉选择： 修改
+ *  选中： 修改
+ * 
+ * describe集合操作，相同的describe日志进行组合
+ */
+import { ref } from 'vue';
+import { useRouter, type RouteRecordRaw } from 'vue-router';
+const router = useRouter()
+const selectedKeys = ref([])
+const routes: RouteRecordRaw[] = router.options.routes.filter((route) =>
+  (route.name as string)?.includes('Demo')
+)
+const collapsed = ref(false)
+const switchRouter = ({ key }: { key: string }) => {
+  router.push(key)
 }
 </script>
 
 <template>
-  {{ value }}
-  <input v-model="value" />
-  <input v-model="address"/>
-  <a-button @click="consoleLog">打印日志</a-button>
-  <a-button @click="consoleAllLog">打印全部日志</a-button>
-  <HelloWorld />
+    <a-layout style="width: 100%; height: 100%;">
+    <a-layout-sider theme="light"> <a-menu
+        v-model:selectedKeys="selectedKeys"
+        mode="inline"
+        :inline-collapsed="collapsed"
+        @click="switchRouter"
+      >
+        <a-menu-item v-for="route in routes" :key="route.path">
+          <span>{{ route.name }}</span>
+        </a-menu-item>
+      </a-menu></a-layout-sider>
+    <a-layout>
+      <a-layout-content style="padding: 2rem;">
+        <RouterView />
+      </a-layout-content>
+    </a-layout>
+  </a-layout>
 </template>
-
 <style scoped>
-header {
-  line-height: 1.5;
-  max-height: 100vh;
-}
 
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
-}
-
-nav {
-  width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 2rem;
-}
-
-nav a.router-link-exact-active {
-  color: var(--color-text);
-}
-
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
-}
-
-nav a {
-  display: inline-block;
-  padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
-}
-
-nav a:first-of-type {
-  border: 0;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
-
-    padding: 1rem 0;
-    margin-top: 1rem;
-  }
-}
 </style>
