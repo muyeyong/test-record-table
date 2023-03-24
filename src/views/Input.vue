@@ -27,11 +27,14 @@
                 名字: <a-input style="width: 100px;"  v-model:value="person.name"></a-input>
                 地址：<a-input style="width: 100px;"  v-model:value="person.address"></a-input>
             </div>
+            <hr style="margin: 10px;">
+            <Child />
             <a-button style="margin: 10px 0;" @click="consoleLog">获取变化日志</a-button>
         </div>
 </template>
     
 <script setup lang='ts'>
+    import Child from './Child.vue';
     import { useReactiveRecord } from '@/custom-reactive';
     const { value, log } = useReactiveRecord('', { describe: '姓名'})
     const { value: address } = useReactiveRecord('马栏山', { describe: '地址'})

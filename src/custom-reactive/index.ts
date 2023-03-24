@@ -1,4 +1,4 @@
-import { customRef, getCurrentInstance, getCurrentScope, ref, triggerRef, watch } from 'vue'
+import { customRef, getCurrentInstance, getCurrentScope, ref, toRaw, triggerRef, watch } from 'vue'
 
 // 作用域的记录
 /**
@@ -11,7 +11,7 @@ import { customRef, getCurrentInstance, getCurrentScope, ref, triggerRef, watch 
  *  联合变量？ 表格？
  */
 
-/**
+/** 
  * type?: 规定数据场景
  *  数据从一个状态变到另一个状态
  *  新增 ===> 数组对象，需要对新增的每一项做出说明（参考table的colum { key: 'name', value: '' }, 提供全局的查询字典 / 可读取自定义字典 / 可传入字典） / 单个值 / 单个对象（处理同数组对象）
@@ -54,21 +54,71 @@ interface CompareResult {
     deletePart: Record<string, any>
     addPart: Record<string, Array<any>>
 }
+
+const isObject = (val: any) => typeof val === 'object' && val !== null
+const isSomeType = (val1: any, val2: any) => {
+     if (isObject(val1) &&  isObject(val2) ) {
+        return true
+     } else if (!isObject(val1) && !isObject(val2)) {
+        return typeof val1 === typeof val2
+     }
+     return false
+}
+const equal = (value1: any, value2: any): boolean => {
+    // 对象所有属性的值都是相同的
+    if (!isSomeType(value1, value2)) {
+        return false
+    } else {
+        if (isObject(value1) && isObject(value2)) {
+           if ( Object.keys(value1).length !== Object.keys(value2).length) {
+                return false
+           }
+           for(const key of Object.keys(value1)) {
+                if (!(key in value2)) return false
+           }
+           for (const key of Object.keys(value1)) {
+             const v1 = value1[key]
+             const v2 = value2[key] 
+             if (isSomeType(v1, v2)) {
+                if (isObject(v1) && isObject(v2)) {
+                    if(!equal(v1, v2)) return false
+                } else {
+                    if (v1 !== v2) return false
+                }
+             } else {
+                return false
+             }
+           }
+        } else {
+            return value1 === value2
+        }
+    }
+    return true
+}
+
+const compareObject = (obj1: object, obj2: object) => {
+
+}
 const compare = (oldValue: any, newValue: any): Partial<CompareResult> => {
     // 如果两者类型不一致，基本类型 跟 引用数据类型，直接退出
     // 只有一个值 ===> 没有变化
     // debugger
     const result: Partial<CompareResult> = {}
     if (newValue === oldValue) {
-
+        // 没有变化，对于对象还需要处理
     } else {
         // 有两个值 ===> 发生了变化
-        const isObject = (val: any) => typeof val === 'object'
-        const isSomeType = (val1: any, val2: any) => isObject(val1) === isObject(val2) 
+       
         if (isSomeType(oldValue, newValue)) {
             // 嵌套对象的处理
             if(isObject(newValue)) {
-
+                /*  对象的话处理每个属性的变化
+                    以新值为基础，遍历新值的每个属性
+                        新有老无 ==> 新增
+                        新有老有 ==> 比较 ==> 判断修改
+                    对于嵌套对象怎么处理？{ a: { b: { c: 1 }}} 
+                */
+               console.log('object change')
             } else {
                 // 基本数据类型处理, key全部是base
                 const isEmptyBasicValue = (value:any) => value === null || value === '' || value === undefined
@@ -92,7 +142,7 @@ const compare = (oldValue: any, newValue: any): Partial<CompareResult> => {
 
 const analysis = (args: Partial<CompareResult>, describe: string, map?: object): string => {
     const { addPart, deletePart, modifyPart } = args
-    console.log(addPart, deletePart, modifyPart )
+    console.log('analysis', addPart, deletePart, modifyPart )
     // 如果是基本数据类型，只会存在上述一种情况
     let result = describe
     if (addPart) {
@@ -185,6 +235,8 @@ export function useReactiveRecord<T> (value: T, option: Option) {
         //TODO 还是要以当前组件作为target DOWN 响应式数据作为target
         // 有一个弹框弹出来，它记录的信息需要上报，关闭后，还需要上报信息
         let dep = history.get(target)
+        // TODO 这里只是浅拷贝，嵌套对象还需要处理
+        value =  typeof value === 'object' && value !== null ? {...value} : value
         if (!dep) {
             dep = { ...option, value: new Set()}
             history.set(target, dep)
@@ -208,12 +260,11 @@ export function useReactiveRecord<T> (value: T, option: Option) {
     }
    
     record(refValue, value)
-    watch(refValue, (oldValue, newValue) => {
-        // TODO 考虑对象的处理 
+    watch(refValue, (newValue, oldValue) => {
+        // TODO 考虑对象的处理 equal处理
         // if (oldValue === newValue) return
-        debugger
         record(refValue, newValue)
-    }, { immediate: true, deep: true })
+    }, {  deep: true })
     return {
         value: refValue,
         log
