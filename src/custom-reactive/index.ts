@@ -1,4 +1,4 @@
-import { customRef, getCurrentInstance, getCurrentScope, ref, toRaw, triggerRef, watch } from 'vue'
+import { getCurrentInstance, ref, watch, onBeforeUnmount, type ComponentInternalInstance, h, type DefineComponent, defineComponent, toRaw, type Ref, isRef } from 'vue'
 
 // 作用域的记录
 /**
@@ -27,11 +27,16 @@ import { customRef, getCurrentInstance, getCurrentScope, ref, toRaw, triggerRef,
  *  提供自定义场景处理
  *  嵌套对象的处理
  *  全局map
+ *  当一个组件被销毁的时候，注册内容要被清除  / 某些子组件数据并不需要注册到父级
+ *  多个数据描述一个行为/单个数据描述一个行为
+ *  理清数据结构==》 history 单个响应式数据 , 这个结构是否可以描述一个日志？
  * 
  */
 
 const BASICDATAKEY = 'BASICDATAKEY'
 const LOGROOT = 'LOGROOT'
+const CHILDHISTORYFLAG = 'CHILDHISTORY'
+
 interface Option {
     describe: string
     parent?: string
@@ -55,6 +60,15 @@ interface CompareResult {
     addPart: Record<string, Array<any>>
 }
 
+interface ReactiveObjHistory<T> extends Option {
+    value: Array<T>
+}
+
+type ReactiveObjHistoryMap<T> = Map<Ref, ReactiveObjHistory<T>>
+type ComponentHistoryMap<T> = ReactiveObjHistoryMap<T> | Map<string, ChildHistoryMap<T>>
+type ChildHistoryMap<T> = Map<number, ComponentHistoryMap<T>>
+
+
 const isObject = (val: any) => typeof val === 'object' && val !== null
 const isSomeType = (val1: any, val2: any) => {
      if (isObject(val1) &&  isObject(val2) ) {
@@ -64,6 +78,17 @@ const isSomeType = (val1: any, val2: any) => {
      }
      return false
 }
+
+function filter(map: Map<any, any>, pred: (k: any, v: any) => boolean) {
+    const result = new Map();
+    for (let [k, v] of map) {
+      if (pred(k,v)) {
+        result.set(k, v);
+      }
+    }
+    return result;
+  }
+  
 const equal = (value1: any, value2: any): boolean => {
     // 对象所有属性的值都是相同的
     if (!isSomeType(value1, value2)) {
@@ -175,46 +200,11 @@ const analysis = (args: Partial<CompareResult>, describe: string, map?: object):
     return result
 }
 
-const generateLog = () => {
-
-}
-export function useReactiveRecord<T> (value: T, option: Option) {
-    const instance = getCurrentInstance()
-    let reportHistoryChange: any = null
-    let history: any = null
-    const refValue = ref(value)
-    const childHistoryChange = (childHistory: Map<any, any>) => {
-        // 监听子组件变化, 收集子组件数据变化
-        for(const [key, value] of childHistory.entries()) {
-            // 如果key存在会执行更新的操作
-            history.set(key, value)
-        }
-    }
-
-    if (instance) {
-        if (instance.props.history) {
-            history = instance.props.history
-        } else {
-            instance.props.history = (history = new Map())
-        }
-        const { parent } = instance
-        // 向上处理
-        reportHistoryChange = parent?.props.reportHistoryChange
-        instance.props = {...instance?.props, reportHistoryChange: childHistoryChange}
-    }
-  
-    const log = () => {
-       const logCombine = new Map()
-        // 对于describe一致的变量做集合处理
-        for (const log of history.values()) {
-            const { value, map, describe, parent = LOGROOT } = log
-            const valueArr = [...value]
-            const firstValue = valueArr[0]
-            const lastValue = valueArr[valueArr.length - 1 ]
-            // 单个响应式数据处理
-            // 解析值的变化, 生成描述日志
-          let res = analysis(compare(firstValue, lastValue), describe, map)
-          if (res !== describe) {
+const handleSelfHistory = <T = any>(selfHistory: ReactiveObjHistoryMap<T>) => {
+        const logCombine = new Map()
+        for (const log of selfHistory.values()) {
+        const res = handleReactiveHistory(log)
+          if (res !== log.describe) {
             //TODO 
             let logs = logCombine.get(parent)
             if (!logs) {
@@ -225,8 +215,109 @@ export function useReactiveRecord<T> (value: T, option: Option) {
             }
            }
            console.log(logCombine)
-            // 加入到describeCombine 中
         }
+}
+
+const  handleReactiveHistory = <T = any>(log: ReactiveObjHistory<T>) => {
+    const { value, describe, map, parent = LOGROOT } = log
+    const valueArr = [...value]
+    const firstValue = valueArr[0]
+    const lastValue = valueArr[valueArr.length - 1 ]
+    // 单个响应式数据处理
+    // 解析值的变化, 生成描述日志
+    return analysis(compare(firstValue, lastValue), describe, map)
+}
+
+const handelComponentHistory = <T = any>(componentHistory: ComponentHistoryMap<T>) => {
+    // 1:响应式数据
+    // 2： 子组件
+    for(let [key, value] of componentHistory.entries()) {
+        if (isRef(key)) {
+           const res =  handleReactiveHistory(value as ReactiveObjHistory<T>)
+           console.log(res)
+        } else  {
+            handleSubComponentHistory(value as ChildHistoryMap<T>)
+        }
+    }
+}
+const handleSubComponentHistory = <T = any>(childHistory: ChildHistoryMap<T>) => {
+        // 组件id => 子组件响应式数据，存在子组件嵌套
+        for(let componentHistory of childHistory.values()) {
+            handelComponentHistory(componentHistory)
+        }
+        // const subComponentHistory = childHistory.get(CHILDHISTORYFLAG)
+        // // 当前组件的全部响应式数据
+        // const selfHistory = filter(history, (k, v) => k !== CHILDHISTORYFLAG)
+        // handleSelfHistory(selfHistory)
+        // handleSubComponentHistory(subComponentHistory)
+}
+
+export function useReactiveRecord<T> (value: T, option: Option) {
+    const instance = getCurrentInstance()
+    let reportChildHistoryChange: any = null
+    let history: any = null
+    const refValue = ref(value)
+    const listenChildHistory = (childHistory: Map<any, any>, instance: ComponentInternalInstance | null) => {
+        // 监听子组件变化, 收集子组件数据变化, 记录子组件的每一个响应式对象
+        // 结构变化一下 { '组件名': { 响应式对象集合 } }
+        // 组件的描述定义在instance上
+        let childHistoryCash = history.get(CHILDHISTORYFLAG)
+        if (!childHistoryCash) {
+            childHistoryCash = new Map()
+            history.set(CHILDHISTORYFLAG, childHistoryCash)
+        }
+        childHistoryCash.set(instance?.uid, childHistory)
+    }
+
+
+    if (instance) {
+        if (instance.props.history) {
+            history = instance.props.history
+        } else {
+            instance.props.history = (history = new Map())
+        }
+        const { parent } = instance
+        reportChildHistoryChange = parent?.props.reportChildHistory
+        instance.props = {...instance?.props, reportChildHistory: listenChildHistory}
+    }
+  
+    const log = () => {
+    //    const logCombine = new Map()
+       /* map的key存在三种情况： 
+            数字 ==> 组件
+            CHILDHISTORYFLAG ==> 子组件集合
+            响应式对象 ==> 数据记录变化
+       **/
+        // 组件id => 子组件响应式数据，存在子组件嵌套
+       const subComponentHistory = history.get(CHILDHISTORYFLAG)
+       // 当前组件的全部响应式数据
+       const selfHistory = filter(history, (k, v) => k !== CHILDHISTORYFLAG)
+       handleSelfHistory(selfHistory)
+       handleSubComponentHistory(subComponentHistory)
+        // 对于describe一致的变量做集合处理
+        // 1： 处理自身响应式数据
+        // 2： 处理子组件响应式数据
+        // for (const log of history.values()) {
+        //     const { value, map, describe, parent = LOGROOT } = log
+        //     const valueArr = [...value]
+        //     const firstValue = valueArr[0]
+        //     const lastValue = valueArr[valueArr.length - 1 ]
+        //     // 单个响应式数据处理
+        //     // 解析值的变化, 生成描述日志
+        //   let res = analysis(compare(firstValue, lastValue), describe, map)
+        //   if (res !== describe) {
+        //     //TODO 
+        //     let logs = logCombine.get(parent)
+        //     if (!logs) {
+        //         logs = Array.of(res)
+        //         logCombine.set(parent, logs)
+        //     } else {
+        //         logs.push(res)
+        //     }
+        //    }
+        //    console.log(logCombine)
+            // 加入到describeCombine 中
+        // }
         // 返回describeCombine ==> 处理结果
         return history
     }
@@ -234,8 +325,10 @@ export function useReactiveRecord<T> (value: T, option: Option) {
     const record = (target: any, value: any) => {
         //TODO 还是要以当前组件作为target DOWN 响应式数据作为target
         // 有一个弹框弹出来，它记录的信息需要上报，关闭后，还需要上报信息
+        // if (instance?.uid === 27) debugger
         let dep = history.get(target)
         // TODO 这里只是浅拷贝，嵌套对象还需要处理
+        value = toRaw(value)
         value =  typeof value === 'object' && value !== null ? {...value} : value
         if (!dep) {
             dep = { ...option, value: new Set()}
@@ -256,11 +349,11 @@ export function useReactiveRecord<T> (value: T, option: Option) {
         // } else {
         //     dep.value.add(value)
         // }
-        reportHistoryChange && reportHistoryChange(history)
+        reportChildHistoryChange && reportChildHistoryChange(history, instance)
     }
    
     record(refValue, value)
-    watch(refValue, (newValue, oldValue) => {
+    watch(refValue, (newValue, _oldValue) => {
         // TODO 考虑对象的处理 equal处理
         // if (oldValue === newValue) return
         record(refValue, newValue)
@@ -269,4 +362,15 @@ export function useReactiveRecord<T> (value: T, option: Option) {
         value: refValue,
         log
     }
+}
+
+export function useIsolationRecord (wrapperComponent: DefineComponent<Record<string, unknown>>) {
+   return defineComponent({
+     setup() {
+
+     },
+     render() {
+        return h(wrapperComponent)
+     }
+   })
 }

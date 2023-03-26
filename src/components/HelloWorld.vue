@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useReactiveRecord  } from '@/custom-reactive';
-const { value } = useReactiveRecord('')
+const { value } = useReactiveRecord('', { describe: 'nothing'})
 </script>
 
 <template>
