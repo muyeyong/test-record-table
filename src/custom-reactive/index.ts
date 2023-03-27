@@ -34,8 +34,10 @@ import { getCurrentInstance, ref, watch, onBeforeUnmount, type ComponentInternal
  */
 
 const BASICDATAKEY = 'BASICDATAKEY'
-const LOGROOT = 'LOGROOT'
+const ROOTLOG = 'ROOTLOG'
 const CHILDHISTORYFLAG = 'CHILDHISTORY'
+const ROOTDESCRIBE = 'ROOTDESCRIBE'
+const LOGANCHOR = '<div id="anchor">'
 
 interface Option {
     describe: string
@@ -64,7 +66,7 @@ interface ReactiveObjHistory<T> extends Option {
     value: Array<T>
 }
 
-type ReactiveObjHistoryMap<T> = Map<Ref, ReactiveObjHistory<T>>
+type ReactiveObjHistoryMap<T> = Map<Ref | string, ReactiveObjHistory<T>>
 type ComponentHistoryMap<T> = ReactiveObjHistoryMap<T> | Map<string, ChildHistoryMap<T>>
 type ChildHistoryMap<T> = Map<number, ComponentHistoryMap<T>>
 
@@ -200,12 +202,43 @@ const analysis = (args: Partial<CompareResult>, describe: string, map?: object):
     return result
 }
 
+const insertLog = (innerHtml: string, childInnerHtml: string) => {
+    if (!childInnerHtml) return innerHtml
+    const index = innerHtml.indexOf(LOGANCHOR) + LOGANCHOR.length - 1
+    return innerHtml.slice(0, index) + childInnerHtml + innerHtml.slice(index + 1)
+}
+
+const generateLogStruct = (rootDescribe: string, rootLogArray: Array<string>, subLogMap?: Map<string, Array<string>>) => {
+    let subLog = ''
+    if (subLogMap) {
+        for(const [key, value] of subLogMap.entries()) {
+           subLog += `${generateLogStruct(key, value)}<br/>`
+        }
+    }
+    return `
+        <span>${rootDescribe}</span>
+        <div style="padding: 10px">
+            ${rootLogArray.join('<br/>')}<br>
+            ${subLog}
+            <div id="anchor"></div>
+        </div>
+    `
+}
+
+const generateLog = (rootDescribe: string, logCombine: Map<string, Array<string>>) => {
+    // 目前只支持两级嵌套
+    const subLogMap = filter(logCombine, (k, _v) => k !== ROOTLOG)
+    return generateLogStruct(rootDescribe, logCombine.get(ROOTLOG) || [], subLogMap)
+}
+
 const handleSelfHistory = <T = any>(selfHistory: ReactiveObjHistoryMap<T>) => {
-        const logCombine = new Map()
-        for (const log of selfHistory.values()) {
+    const logCombine = new Map()
+    const describe = selfHistory.get(ROOTDESCRIBE)
+    selfHistory = filter(selfHistory, (k, _value) => k !== ROOTDESCRIBE)
+    for (const log of selfHistory.values()) {
+        const { parent = ROOTLOG } = log
         const res = handleReactiveHistory(log)
-          if (res !== log.describe) {
-            //TODO 
+            if (res !== log.describe) {
             let logs = logCombine.get(parent)
             if (!logs) {
                 logs = Array.of(res)
@@ -213,13 +246,13 @@ const handleSelfHistory = <T = any>(selfHistory: ReactiveObjHistoryMap<T>) => {
             } else {
                 logs.push(res)
             }
-           }
-           console.log(logCombine)
         }
+    }
+    return generateLog(describe as unknown as string, logCombine)
 }
 
-const  handleReactiveHistory = <T = any>(log: ReactiveObjHistory<T>) => {
-    const { value, describe, map, parent = LOGROOT } = log
+const handleReactiveHistory = <T = any>(log: ReactiveObjHistory<T>) => {
+    const { value, describe, map } = log
     const valueArr = [...value]
     const firstValue = valueArr[0]
     const lastValue = valueArr[valueArr.length - 1 ]
@@ -228,23 +261,23 @@ const  handleReactiveHistory = <T = any>(log: ReactiveObjHistory<T>) => {
     return analysis(compare(firstValue, lastValue), describe, map)
 }
 
-const handelComponentHistory = <T = any>(componentHistory: ComponentHistoryMap<T>) => {
-    // 1:响应式数据
-    // 2： 子组件
-    for(let [key, value] of componentHistory.entries()) {
-        if (isRef(key)) {
-           const res =  handleReactiveHistory(value as ReactiveObjHistory<T>)
-           console.log(res)
-        } else  {
-            handleSubComponentHistory(value as ChildHistoryMap<T>)
-        }
-    }
+const handleComponentHistory = <T = any>(componentHistory: ComponentHistoryMap<T>) => {
+    const subComponentHistory = componentHistory.get(CHILDHISTORYFLAG) as ChildHistoryMap<T>
+    const selfHistory = filter(componentHistory, (k, _v) => k !== CHILDHISTORYFLAG)
+    const log1 = handleSelfHistory(selfHistory)
+    // console.log('456', log1)
+    const log2 = subComponentHistory && handleSubComponentHistory(subComponentHistory)
+    // console.log('789', log2)
+    // log2 需要嵌入 log1里面去
+    return insertLog(log1, log2)
 }
 const handleSubComponentHistory = <T = any>(childHistory: ChildHistoryMap<T>) => {
         // 组件id => 子组件响应式数据，存在子组件嵌套
+        let log =  ''
         for(let componentHistory of childHistory.values()) {
-            handelComponentHistory(componentHistory)
+           log += handleComponentHistory(componentHistory)
         }
+        return log
         // const subComponentHistory = childHistory.get(CHILDHISTORYFLAG)
         // // 当前组件的全部响应式数据
         // const selfHistory = filter(history, (k, v) => k !== CHILDHISTORYFLAG)
@@ -269,12 +302,11 @@ export function useReactiveRecord<T> (value: T, option: Option) {
         childHistoryCash.set(instance?.uid, childHistory)
     }
 
-
     if (instance) {
         if (instance.props.history) {
             history = instance.props.history
         } else {
-            instance.props.history = (history = new Map())
+            instance.props.history = (history = new Map([[ROOTDESCRIBE, (instance.type as any).describe]]))
         }
         const { parent } = instance
         reportChildHistoryChange = parent?.props.reportChildHistory
@@ -292,8 +324,9 @@ export function useReactiveRecord<T> (value: T, option: Option) {
        const subComponentHistory = history.get(CHILDHISTORYFLAG)
        // 当前组件的全部响应式数据
        const selfHistory = filter(history, (k, v) => k !== CHILDHISTORYFLAG)
-       handleSelfHistory(selfHistory)
-       handleSubComponentHistory(subComponentHistory)
+       const selfLog = handleSelfHistory(selfHistory)
+       const subComponentLog = handleSubComponentHistory(subComponentHistory)
+    //    console.log('subComponentLog', subComponentLog)
         // 对于describe一致的变量做集合处理
         // 1： 处理自身响应式数据
         // 2： 处理子组件响应式数据
@@ -319,13 +352,11 @@ export function useReactiveRecord<T> (value: T, option: Option) {
             // 加入到describeCombine 中
         // }
         // 返回describeCombine ==> 处理结果
-        return history
+        return insertLog(selfLog, subComponentLog)
     }
 
     const record = (target: any, value: any) => {
         //TODO 还是要以当前组件作为target DOWN 响应式数据作为target
-        // 有一个弹框弹出来，它记录的信息需要上报，关闭后，还需要上报信息
-        // if (instance?.uid === 27) debugger
         let dep = history.get(target)
         // TODO 这里只是浅拷贝，嵌套对象还需要处理
         value = toRaw(value)
@@ -339,16 +370,6 @@ export function useReactiveRecord<T> (value: T, option: Option) {
         //TODO 如果存在相同的数据，就进行回退，有这个必要性吗？
         //TODO 对象处理
         dep.value.add(value)
-        // if (dep.value.has(value)) {
-        //    const newDep = new Set()
-        //    for(let v of  dep.value.values()) {
-        //      newDep.add(v)
-        //      if(value === v) break
-        //    }
-        //    history.set(target, {...dep, value: newDep })
-        // } else {
-        //     dep.value.add(value)
-        // }
         reportChildHistoryChange && reportChildHistoryChange(history, instance)
     }
    

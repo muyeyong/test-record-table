@@ -4,7 +4,6 @@
             <span>姓名(grandson):</span>
             <a-input style="width: 100px;" v-model:value="value"></a-input>
         </div>
-       
     </div>
 </template>
 
