@@ -1,0 +1,67 @@
+{
+    "process": {
+        "equal": {
+            "noEqual": "不相等",
+            "equal": "相等"
+        },
+        "features": {
+            "processName": "进程名称",
+            "companyName": "进程文件属性:公司名称",
+            "describe": "进程文件属性:描述",
+            "md5": "进程文件MD5值"
+        }
+    },
+    "ip": {
+        "equal": {
+            "noEqual": "不相等",
+            "equal": "相等"
+        }
+    },
+    "portRange": {
+        "equal": {
+            "noEqual": "不相等",
+            "equal": "相等"
+        }
+    },
+    "localFilePath": {
+        "equal": {
+            "noEqual": "不相等",
+            "equal": "相等"
+        }
+    },
+    "remoteFilePath": {
+        "equal": {
+            "noEqual": "不相等",
+            "equal": "相等"
+        }
+    },
+    "sensitiveRule": {
+        "equal": {
+            "noEqual": "不相等",
+            "equal": "相等"
+        }
+    },
+    "actions": {
+        "*": {
+            "1": "审计",
+            "2": "阻止",
+            "3": "异步上传"
+        }
+    },
+    "FTPOptions": {
+        "*": {
+            "1": "登录",
+            "2": "上传",
+            "3": "下载",
+            "4": "删除",
+            "5": "重命名",
+            "6": "其他命令"
+        }
+    },
+    "promptMessage": {
+        "radio": {
+            "1": "否",
+            "2": "是"
+        }
+    }
+}
