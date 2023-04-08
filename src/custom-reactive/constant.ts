@@ -11,3 +11,4 @@ export const DELETED = "删除："
 export const INJECTIONKEY = Symbol()
 export const CHANGETYPE = Symbol()
 export const CHANGE = Symbol()
+export const NOPARSED = "NOPARSED"

@@ -13,6 +13,7 @@
     "@vue/compiler-sfc": "^3.2.47",
     "ant-design-vue": "^3.2.15",
     "diff-dom": "^5.0.4",
+    "lodash-es": "^4.17.21",
     "parse5": "^7.1.2",
     "unplugin-vue-setup-extend-plus": "^0.4.9",
     "vue": "^3.2.47",

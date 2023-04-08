@@ -130,7 +130,6 @@ const { value: physicsTag } = useReactiveRecord([
                         true: "选中",
                         false: "不选中"
                     }
-
                 }
             }
         }
