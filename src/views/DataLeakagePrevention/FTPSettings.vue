@@ -110,36 +110,40 @@ import ftpValueMap from './ftpValueMap.json'
 
 const formStateEmpty = {
     process: {
-        key: "process",
+        key: "进程",
         equal: "noEqual",
         features: "processName",
         featuresValue: ""
     },
     ip: {
-        key: "ip",
+        key: "ip/域名",
         equal: "noEqual",
         value: ""
     },
     portRange: {
-        key: "portRange",
+        key: "端口范围",
         equal: "noEqual",
         value: ""
     },
     FTPOptions: [],
     localFilePath: {
+        key: '本地文件路径',
         equal: "noEqual",
         value: ""
     },
     remoteFilePath: {
+        key: '远程文件路径',
         equal: "noEqual",
         value: ""
     },
     sensitiveRule: {
+        key: '敏感规则模版',
         equal: "noEqual",
         value: ""
     },
     actions: [],
     promptMessage: {
+        key: '提示信息',
         radio: "",
         content: ""
     }
@@ -232,7 +236,7 @@ const handleOk = () => {
 }
 const { value: dataSource } = useReactiveRecord([], { describe: 'FTP文件传输协议访问控制列表' })
 
-const { value: formState, log: formLog  } = useReactiveRecord(formStateEmpty, { describe: '新增FTP访问控制列表', individual: true,keyMap: ftpKeyMap, valueMap: ftpValueMap })
+const { value: formState, log: formLog  } = useReactiveRecord(formStateEmpty, { describe: '新增FTP访问控制列表', individual: true, signKey: "key", keyMap: ftpKeyMap, valueMap: ftpValueMap })
 </script>
     
 <style></style>

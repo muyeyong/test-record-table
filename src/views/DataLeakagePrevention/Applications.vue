@@ -137,14 +137,18 @@ const { value: data } = useReactiveRecord<DataType[]>([], {
     describe: '应用范围',
     signKey: 'manageDomains',
     keyMap: {
-        manageDomains: "管理域",
-        manageObject: "管理对象",
-        type: "管理类型",
-        architecture: "操作系统位数",
-        system: "操作系统名称",
-        language: "语言",
-        describe: "描述",
-        value: "值",
+        "*": {
+            key: "*",
+            manageDomains: "管理域",
+            manageObject: "管理对象",
+            type: "管理类型",
+            architecture: "操作系统位数",
+            system: "操作系统名称",
+            language: "语言",
+            describe: "描述",
+            value: "值",
+        }
+       
     }
 });
 const emptyApplication = {

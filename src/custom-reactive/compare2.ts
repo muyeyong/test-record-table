@@ -81,21 +81,35 @@ function compareObjects(obj1: any, obj2: any, signKey?: string): any {
   return result;
 }
 
+const wrapperArrayItem = (item: any, path: string) => {
+  let result: any = {}
+ Object.entries(item).forEach(entry => {
+    const [key, value] = entry
+    if (Array.isArray(value)) {
+      //TODO 这里要测试
+      for(let i = 0; i < value.length; i += 1) {
+         result[`${path}.${key}`]  = wrapperArrayItem(value[i], `${path}.${key}.${i}`)
+      }
+    } else {
+      result[`${path}.${key}`] = value 
+    }
+  })
+  return result
+}
 function compareArrays(arr1: any[], arr2: any[], signKey?: string): any[] {
   const result: Array<CompareResult> = [];
-
   // Look for deletions
   for (let i = 0; i < arr1.length; i++) {
     const found = arr2.find(item => deepEqual(item, arr1[i]));
     if (!found) {
-      result.push({ type: "deleted", value: arr1[i] });
+      result.push({ type: "deleted", value: wrapperArrayItem(arr1[i], i.toString()) });
     }
   }
   // Look for additions
   for (let i = 0; i < arr2.length; i++) {
     const found = arr1.find(item => deepEqual(item, arr2[i]));
     if (!found) {
-      result.push({ type: "added", value: arr2[i] });
+      result.push({ type: "added", value: wrapperArrayItem(arr2[i], i.toString()) });
     }
   }
 
@@ -108,7 +122,7 @@ function compareArrays(arr1: any[], arr2: any[], signKey?: string): any[] {
         const res = getObjectDiff(diff, arr1[i], i.toString())
         //TODO 在记录的时候，属性变化，需要对变化做出描述，自动向平级/上级找关键字处理
         // 判断value的层级， 自动的过程
-        result.push(...res.map(item => ({ ...item })));
+        result.push(...res);
       }
     }
   }

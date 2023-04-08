@@ -67,6 +67,7 @@ const parseObjectValue = (fullPath: Array<string>, value: any) => {
     }
 }
 
+
 const parseHistoryPath = (key: string, targetObj: any, signKey: string) => {
     const historyPath = []
     let parentPath = ""
@@ -121,6 +122,7 @@ const analysisChange = (changes: object, path: Array<string>, signKey: string, o
             const type = changeValue[CHANGETYPE]
             const change = changeValue[CHANGE]
             const parsedKey = parseObjectKey(fullPath)
+            if (parsedKey === INGOREKEY) continue
             const parsedValue = parseObjectValue(fullPath, change)
             const targetObj = type === 'deleted' ? oldObj : newObj
             const changeWholeObj = isObject(targetObj[changeKey]) ? true : false
@@ -139,22 +141,23 @@ const analysisChange = (changes: object, path: Array<string>, signKey: string, o
                 }
                 result.push({ type, key: describeWholeKey, value: describeWholeObj })
             } else {
-                let prefix = ""
-                if (signKey !== "") {
-                    prefix = targetObj[signKey]
-                }
-                result.push({ type, key: `${prefix}${parsedKey}`, value: parsedValue })
+                // let prefix = ""
+                // if (signKey !== "") {
+                //     prefix = targetObj[signKey]
+                // }
+                result.push({ type, key: parsedKey, value: parsedValue })
             }
         } else {
             let { newObj, oldObj } = originalObj
             newObj = newObj[changeKey]
             oldObj = oldObj[changeKey]
-            const parsedSingnKey = signKey !== "" ?  (newObj[signKey] || NOPARSED) : NOPARSED
+            const selfValue = newObj ? newObj : oldObj
+            const selfKey = signKey === "" ? NOPARSED : (selfValue[signKey] || NOPARSED)
            let target = result.find((item) => {
-                item.key === parsedSingnKey
+                item.key === selfKey
             })
             if (!target) {
-                target = { key: parsedSingnKey, children: []}
+                target = { key: selfKey, children: []}
                 result.push(target)
             } 
             target.children = [].concat(target.children, ...analysisChange(changeValue, ([] as string[]).concat(path, changeKey), signKey, { newObj, oldObj }))
@@ -163,51 +166,6 @@ const analysisChange = (changes: object, path: Array<string>, signKey: string, o
     return result
 }
 
-// const describeChange = (change: Array<any>) => {
-//     const collect = new Map()
-//     for(let i = 0; i < change.length; i += 1) {
-//         const item = change[i]
-//         for(let j = 0; j < item.length; j += 1) {
-//             const { key, value} = item[j]
-//             let describeValue = collect.get(key)
-//             if (!describeValue) {
-//                 describeValue = new Map()
-//                 collect.set(key, describeValue)
-//             }
-//             if ("type" in item[j]) {
-//                 // 找到目标了
-//               const { type } = item[j]
-//                 let describeStr = ""
-//                 if ( type === 'added') {
-//                     let addValue = describeValue.get(ADDED)
-//                     if (!addValue) {
-//                         addValue = new Array()
-//                     }
-//                     describeStr = value
-//                     addValue.push(describeStr)
-//                 } else if ( type === 'modified') {
-//                     let modifiedValue = describeValue.get(MODIFIED)
-//                     if (!modifiedValue) {
-//                         modifiedValue = new Array()
-//                     }
-//                     describeStr = `从${value[0]}修改成${value[1]}`
-//                     modifiedValue.push(describeStr)
-//                 } else if( type === 'deleted') {
-//                     let deletedValue = describeValue.get(DELETED)
-//                     if (!deletedValue) {
-//                         deletedValue = new Array()
-//                     }
-//                     describeStr = value
-//                     deletedValue.push(describeStr)
-//                 }
-//             } else {
-//                 // 继续嵌套
-//               describeChange(item[j].value)
-//             }
-//         }
-//         console.log('2333', collect)
-//     }
-// }
 
 const describeSingleChange = (change: Map<string, Map<string, Array<string>>>) => {
     let result = ''
@@ -304,20 +262,29 @@ const describeChange = (changes: Array<any>): string => {
     return result
 }
 
-const getAllChangePath = (changes: object) => {
-    
+const getAllChangePath = (changes: object, path: Array<string>) => {
+    let result: Array<any> = []
+    for(const [changeKey, changeValue] of Object.entries(changes)) {
+        if ( CHANGETYPE in changeValue && CHANGE in changeValue) {
+            return [...path, changeKey].join('.')
+        } else {
+           result.push(getAllChangePath(changeValue, [...path, changeKey])) 
+        }
+    }
+    return result
 }
 const analysisParentChange= (changes: object, originalObj: { newObject: any, oldObj: any}) => {
-    const allChangePath = getAllChangePath(changes)
+    const allChangePath = getAllChangePath(changes, [])
+    // console.log(allChangePath)
 }
 export const analysis = (history: any, originalObj: any, signKey = '', keyMap?: object, valueMap?: object) => {
-    console.log(history)
     diyKeyMap = keyMap
     diyValueMap = valueMap
     const result = []
     const collect: Map<string, Array<CompareResult>> = new Map()
     // TODO 返回一个对象
     const changeDescribe = describeChange(analysisChange(history, [], signKey, originalObj))
+    console.log(changeDescribe)
     // 描述父级状况
     // 通过history找出所有的修改路径，存在多条取最长公共子串，存在一条做特殊判断
     analysisParentChange(history, originalObj)

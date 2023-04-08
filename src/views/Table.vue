@@ -70,7 +70,15 @@
                 status: true,
                 address: '西湖区湖底公园2号',
               },
-            ], { describe: '用户信息表', signKey: 'name' })
+            ], { describe: '用户信息表', signKey: 'name', keyMap: {
+              "*": {
+                key: "*",
+                name: '姓名',
+                address: "地址",
+                age: "年龄",
+                status: "状态"
+              }
+            } })
     const columns = reactive([
               {
                 title: '姓名',

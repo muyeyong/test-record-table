@@ -1,36 +1,46 @@
 {
     "process": {
+        "#": "进程",
+        "key": "进程",
         "equal": "相等",
         "features": "进程特征项",
         "featuresValue": "进程特征值"
     },
     "ip": {
+        "#": "IP/域名",
         "equal": "相等",
         "value": "IP/域名"
     },
     "portRange": {
+        "#": "端口范围",
         "equal": "相等",
         "value": "端口范围"
     },
     "localFilePath": {
+        "#": "本地文件路径",
         "equal": "相等",
         "value": "本地文件路径"
     },
     "remoteFilePath": {
+        "#": "远程文件路径",
         "equal":"相等",
         "value": "远程文件路径"
     },
     "sensitiveRule": {
+        "#": "敏感规则模板",
         "equal":"相等",
         "value": "敏感规则模板"
     },
     "actions": {
+        "#": "动作",
         "*": "动作"
     },
     "FTPOptions": {
+        "#": "FTP操作",
         "*": "FTP操作"
     },
     "promptMessage": {
+        "#": "提示信息",
         "content": "自定义提示信息内容",
         "radio": "弹出提示信息"
     }
