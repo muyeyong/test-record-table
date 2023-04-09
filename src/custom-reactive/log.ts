@@ -25,7 +25,7 @@ const generateLogStruct = (rootDescribe: string, rootLogArray: Array<any>, subLo
         const res = rootLogArray.map(item => {
             const { name, changes } = item
             const changesLog = changes.map((change: any) => {
-                const { changePart, beforeModified, afterModified } = change
+                const { changeDescribe, beforeModified, afterModified } = change
                 const generateCompare = (change: Array<any>, preStr: string) => {
                     return change.reduce((pre: string, next: object) => {
                         let itemStr = ""
@@ -45,7 +45,7 @@ const generateLogStruct = (rootDescribe: string, rootLogArray: Array<any>, subLo
                 const before = generateCompare(beforeModified, '变化前 => ')
                 const after = generateCompare(afterModified, '变化后 => ')
                 return `<div>
-                    <p> ${changePart} </p>
+                    <p> ${changeDescribe} </p>
                     <div style="padding: 0 15px">
                         <p>${before}</p>
                         <p>${after}</p>
@@ -117,8 +117,8 @@ export const handleReactiveHistory = <T = any>(log: ReactiveObjHistory<T>) => {
     // console.log('diff2', diff2)
     const wrapDiff = polymer(diff2)
     //TODO 需要返回 变化部分 原始描述 改变描述
-    analysis2(wrapDiff, { oldObj: firstValue, newObj: lastValue }, signKey, keyMap, valueMap)
-    return analysis(diff, { oldObj: firstValue, newObj: lastValue }, signKey, keyMap, valueMap)
+    return analysis2(wrapDiff, { oldObj: firstValue, newObj: lastValue }, signKey, keyMap, valueMap)
+    // return analysis(diff, { oldObj: firstValue, newObj: lastValue }, signKey, keyMap, valueMap)
 }
 
 export const handleComponentHistory = <T = any>(componentHistory: ComponentHistoryMap<T>) => {

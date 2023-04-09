@@ -3,6 +3,7 @@ import selfKeyMap from './keyMap.json'
 import selfValueMap from './valueMap.json'
 import { isEmptyObj, isObject, isValidKey } from "./utils"
 import { ADDED, CHANGE, CHANGETYPE, DELETED, INGOREKEY, MODIFIED, NOPARSED, PARSEWILDCARD } from "./constant"
+import { cloneDeep, isEqual } from 'lodash-es'
 
 let diyKeyMap: object | null | undefined = null
 let diyValueMap: object | null | undefined = null
@@ -139,28 +140,24 @@ const analysisChange = (changes: object, path: Array<string>, signKey: string, o
                     const v1 = parseObjectValue(currPath, value)
                     describeWholeObj[k1] = v1
                 }
-                result.push({ type, key: describeWholeKey, value: describeWholeObj })
+                result.push({ type, key: describeWholeKey, value: describeWholeObj, originalObj })
             } else {
-                // let prefix = ""
-                // if (signKey !== "") {
-                //     prefix = targetObj[signKey]
-                // }
-                result.push({ type, key: parsedKey, value: parsedValue })
+                result.push({ type, key: parsedKey, value: parsedValue, originalObj })
             }
         } else {
-            let { newObj, oldObj } = originalObj
-            newObj = newObj[changeKey]
-            oldObj = oldObj[changeKey]
-            const selfValue = newObj ? newObj : oldObj
+            const { newObj, oldObj } = originalObj
+            const nextNewObj = newObj[changeKey]
+            const nextOldObj = oldObj[changeKey]
+            const selfValue = nextNewObj ? nextNewObj : nextOldObj
             const selfKey = signKey === "" ? NOPARSED : (selfValue[signKey] || NOPARSED)
            let target = result.find((item) => {
                 item.key === selfKey
             })
             if (!target) {
-                target = { key: selfKey, children: []}
+                target = { key: selfKey, originalObj: { oldObj: { [changeKey]: cloneDeep(nextOldObj)}, newObj: { [changeKey]: cloneDeep(nextNewObj) }},  children: []}
                 result.push(target)
             } 
-            target.children = [].concat(target.children, ...analysisChange(changeValue, ([] as string[]).concat(path, changeKey), signKey, { newObj, oldObj }))
+            target.children = [].concat(target.children, ...analysisChange(changeValue, ([] as string[]).concat(path, changeKey), signKey, { newObj: nextNewObj, oldObj: nextOldObj }))
         }
     }
     return result
@@ -209,7 +206,48 @@ const describeSingleChange = (change: Map<string, Map<string, Array<string>>>) =
     }
     return result
 }
+
+const generateObjDescribe = (obj: any, parentPath: Array<string>): Array<any> => {
+    let result = []
+    let describeObj: any = {}
+    let path: string[] = [...parentPath]
+    for (const key in obj) {
+        if (isObject(obj[key])) {
+            path.push(key)
+            result.push(...generateObjDescribe(obj[key], path))
+            path.pop()
+        } else {
+            const fullPath = [...path, key]
+            const parsedKey = parseObjectKey(fullPath)
+            if (parsedKey === INGOREKEY) continue
+            const parsedValue = parseObjectValue(fullPath, obj[key]) || '空'
+            if ((parsedKey as any) in describeObj) {
+                describeObj[parsedKey as any] =  Array.from(new Set([describeObj[parsedKey as any], parsedValue])).join('、')
+            } else {
+                describeObj[parsedKey as any] = parsedValue
+            }
+
+        }
+    }
+    if (!isEmptyObj(describeObj)) result.push(describeObj)
+    return result
+}
+const describeWholeObj= (originalObj: any) => {
+    let beforeModified: Array<any> = []
+    let afterModified: Array<any> = []
+    const { newObj, oldObj } = originalObj
+    // 先找到变化的对象
+    if(isObject(newObj) && isObject(oldObj)) {
+        beforeModified = generateObjDescribe(oldObj, [])
+        afterModified = generateObjDescribe(newObj, [])
+    } else {
+        beforeModified = [{ BASICDATAKEY: oldObj }]
+        afterModified = [{ BASICDATAKEY: newObj }]
+    }
+    return { beforeModified, afterModified }
+}
 const describeChange = (changes: Array<any>): string => {
+    //TODO 如果每一项都是新增 or 删除，统一处理
     const collect = new Map()
     let result = ""
     for (let i = 0; i < changes.length; i += 1) {
@@ -262,6 +300,7 @@ const describeChange = (changes: Array<any>): string => {
     return result
 }
 
+
 const getAllChangePath = (changes: object, path: Array<string>) => {
     let result: Array<any> = []
     for(const [changeKey, changeValue] of Object.entries(changes)) {
@@ -273,107 +312,25 @@ const getAllChangePath = (changes: object, path: Array<string>) => {
     }
     return result
 }
-const analysisParentChange= (changes: object, originalObj: { newObject: any, oldObj: any}) => {
-    const allChangePath = getAllChangePath(changes, [])
-    // console.log(allChangePath)
-}
+
 export const analysis = (history: any, originalObj: any, signKey = '', keyMap?: object, valueMap?: object) => {
     diyKeyMap = keyMap
     diyValueMap = valueMap
     const result = []
-    const collect: Map<string, Array<CompareResult>> = new Map()
-    // TODO 返回一个对象
-    const changeDescribe = describeChange(analysisChange(history, [], signKey, originalObj))
-    console.log(changeDescribe)
-    // 描述父级状况
-    // 通过history找出所有的修改路径，存在多条取最长公共子串，存在一条做特殊判断
-    analysisParentChange(history, originalObj)
-    // const beforeModified = ''
-    // const afterModified = ''
-    // console.log(originalObj, changeDescribe)
-//    console.log(res)
-
-//    describeChange(res)
-    // history.forEach(item => {
-    //     // 提前处理history
-    //     const { key = '' } = item
-    //     // 收集同一个对象的改动
-    //     let target = collect.get(key)
-    //     if (target) {
-    //         target.push(item)
-    //     } else {
-    //         target = Array.of(item)
-    //         collect.set(key, target)
-    //     }
-    // })
-    // for (let [key, value] of collect.entries()) {
-    //     // 每一个修改都有其对应的原始对象
-    //     value.forEach(item => {
-    //         oldKey = null
-    //         for (const [modifyKey, modifyValue] of Object.entries(item.value)) {
-    //             if (modifyKey === signKey) {
-    //                 if (item.type === 'deleted') {
-    //                     oldKey = modifyValue
-    //                 } else if (item.type === 'modified') {
-    //                     oldKey = (modifyValue as Array<any>)[0]
-    //                 }
-    //                 break
-    //             }
-    //         }
-    //         let tempOriginalObj = null
-    //         let targetObj = null
-    //         if (item.type === 'deleted') {
-    //             tempOriginalObj = originalObj.oldObj
-    //         } else {
-    //             tempOriginalObj = originalObj.newObj
-    //         }
-    //         if (Array.isArray(tempOriginalObj)) {
-    //             targetObj = tempOriginalObj.find((item: any) => oldKey ? item[signKey] === oldKey : item[signKey] === key)
-    //         } else if (isObject(tempOriginalObj)) {
-    //             targetObj = tempOriginalObj
-    //         }
-    //         item.originalObj = targetObj
-    //     })
-    //     // 找出变化的差异
-    //     const res = generateAnalysis(value, key, signKey)
-    //     // 传入两个key，如果修改的值是signKey
-    //     //TODO 如果signKey不存在的话，怎么处理
-    //     const { beforeModified, afterModified } = generateParentAnalysis(originalObj, key, oldKey ? oldKey : key, signKey)
-
-    //     result.push({
-    //         beforeModified,
-    //         afterModified,
-    //         changePart: res,
-    //         type: ''
-    //     })
-    // }
-    // return result
-}
-
-const generateObjDescribe = (obj: any, parentPath: Array<string>): Array<any> => {
-    let result = []
-    let describeObj: any = {}
-    let path: string[] = [...parentPath]
-    for (const key in obj) {
-        if (isObject(obj[key])) {
-            path.push(key)
-            result.push(...generateObjDescribe(obj[key], path))
-            path.pop()
-        } else {
-            const fullPath = [...path, key].join('.')
-            const parsedKey = parseObjectKey(fullPath)
-            const parsedValue = parseObjectValue(fullPath, obj[key]) || '空'
-            if ((parsedKey as any) in describeObj) {
-                describeObj[parsedKey as any] =  Array.from(new Set([describeObj[parsedKey as any], parsedValue])).join('、')
-            } else {
-                describeObj[parsedKey as any] = parsedValue
-            }
-
-        }
+    // TODO 返回一个对象，更加灵活，考虑什么样的结构
+    const changeStructure = analysisChange(history, [], signKey, originalObj)
+    for(let i = 0; i < changeStructure.length; i += 1) {
+       const changeDescribe = describeChange([changeStructure[i]])
+       const { beforeModified, afterModified } = describeWholeObj(changeStructure[i].originalObj)
+       result.push({
+        changeDescribe,
+        beforeModified,
+        afterModified
+       })
     }
-    if (!isEmptyObj(describeObj)) result.push(describeObj)
     return result
 }
+
 
 const generateParentAnalysis = (originalObj: any, newKey: string, oldKey: string, signKey: string) => {
     // 形容这个对象

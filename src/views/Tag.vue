@@ -69,6 +69,7 @@ const { value: basicTag, log } = useReactiveRecord(
         describe: '终端基本属性', signKey: 'key',
         keyMap: {
             "*": {
+                key: "*",
                 value: {
                     "*": {
                         key: "名称",
@@ -113,6 +114,7 @@ const { value: physicsTag } = useReactiveRecord([
     describe: '终端物理环境属性', signKey: 'key',
     keyMap: {
         "*": {
+            key: "*",
             value: {
                 "*": {
                     key: "名称",
