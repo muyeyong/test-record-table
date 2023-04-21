@@ -2,10 +2,10 @@
     <div>
         <p>终端基本属性(可选/可取消)</p>
         <div style="padding: 0 10px;">
-            <div v-for="item in basicTag" :key="item.key" style="display: flex;">
-                <div style="margin-right: 20px;"> {{ item.key }}</div>
+            <div v-for="item in basicTag" :key="item.strgroupname" style="display: flex;">
+                <div style="margin-right: 20px;"> {{ item.strgroupname }}</div>
                 <span v-for="tag in item.value">
-                    <a-checkable-tag v-model:checked="tag.checked" @change="handleTagChange">{{ tag.name
+                    <a-checkable-tag v-model:checked="tag.checked" @change="handleTagChange">{{ tag.strlablename
                     }}</a-checkable-tag>
                 </span>
             </div>
@@ -47,55 +47,45 @@
 </template>
     
 <script setup lang='ts'>
-import { useReactiveRecord } from '@/custom-reactive';
+import { useOperatorLog } from '@/custom-reactive';
 import { ref } from 'vue';
 
-const { value: basicTag, log } = useReactiveRecord(
+const { value: basicTag, log } = useOperatorLog(
     [
         {
-            key: '设备归属', value: [
-                { key: '个人设备', name: '个人设备', checked: false },
-                { key: '派发设备', name: '派发设备', checked: false }
+            strgroupname: '1', value: [
+                { strlablename: '个人设备', checked: false },
+                { strlablename: '派发设备', checked: false }
             ]
         },
         {
-            key: '操作系统类型', value: [
-                { key: 'Android', name: 'Android', checked: false },
-                { key: 'IOS', name: 'IOS', checked: false },
-                { key: 'Linux', name: 'Linux', checked: false }]
+            strgroupname: '操作系统类型', value: [
+                { strlablename: 'Android', checked: false },
+                { strlablename: 'IOS', checked: false },
+                { strlablename: 'Linux', checked: false }]
         }
     ],
     {
-        describe: '终端基本属性', signKey: 'key',
+        describe: '终端基本属性', signKey: ["strgroupname", "strlablename"],
         keyMap: {
-            "*": {
-                key: "*",
-                value: {
-                    "*": {
-                        key: "名称",
-                        name: "名称",
-                        checked: "状态"
-                    }
-                }
-            }
+            strlablename: "名称",
+            checked: "状态",
+            strgroupname: "*"
         },
         valueMap: {
-            "*": {
-                value: {
-                    "*": {
-                        checked: {
-                            true: "选中",
-                            false: "不选中"
-                        }
-
-                    }
+            checked: {
+                true: "选中",
+                false: "不选中"
+            },
+            signKey: {
+                strgroupname: {
+                    "1": "设备名称"
                 }
             }
-
         }
     })
 
-const { value: physicsTag } = useReactiveRecord([
+const { value: physicsTag } = useOperatorLog([
     {
         key: '网络环境',
         value: [
@@ -111,31 +101,32 @@ const { value: physicsTag } = useReactiveRecord([
         ]
     }
 ], {
-    describe: '终端物理环境属性', signKey: 'key',
+    describe: '终端物理环境属性', signKey: ['key'],
     keyMap: {
-        "*": {
-            key: "*",
-            value: {
-                "*": {
-                    key: "名称",
-                    name: "名称",
-                    checked: "状态"
-                }
-            }
-        }
-    },
-    valueMap: {
-        "*": {
-            value: {
-                "*": {
-                    checked: {
-                        true: "选中",
-                        false: "不选中"
-                    }
-                }
-            }
+        // "*": {
+        //     key: "*",
+        //     value: {
+        //         "*": {
+        //             key: "名称",
+        //             name: "名称",
+        //             checked: "状态"
+        //         }
+        //     }
+        // }
+
+        key: "*",
+        value: {
+            key: "名称",
+            name: "名称",
+            checked: "状态"
         }
 
+    },
+    valueMap: {
+        checked: {
+            true: "选中",
+            false: "不选中"
+        }
     }
 })
 
@@ -151,9 +142,9 @@ const handleTagChange = () => {
 }
 
 const handleOk = () => {
-    console.log(value1.value, value2.value)
+
     if (value1.value && value2.value) {
-        const newTag = { key: value2.value, name: value2.value, checked: false }
+        const newTag = { strlablename: value2.value, name: value2.value, checked: false }
         switch (value1.value) {
             case 'belong':
                 basicTag.value[0].value.push(newTag)

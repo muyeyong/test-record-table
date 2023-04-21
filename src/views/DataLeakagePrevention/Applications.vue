@@ -68,7 +68,7 @@
 </template>
     
 <script setup lang='ts'>
-import { useReactiveRecord } from '@/custom-reactive';
+import { useOperatorLog } from '@/custom-reactive';
 import { reactive, ref, computed } from 'vue';
 type Key = string | number;
 
@@ -133,22 +133,22 @@ const columns = [
         dataIndex: 'describe'
     }
 ];
-const { value: data } = useReactiveRecord<DataType[]>([], {
+const { value: data } = useOperatorLog<DataType[]>([], {
     describe: '应用范围',
-    signKey: 'manageDomains',
+    signKey: ['manageDomains'],
     keyMap: {
-        "*": {
-            key: "*",
-            manageDomains: "管理域",
-            manageObject: "管理对象",
-            type: "管理类型",
-            architecture: "操作系统位数",
-            system: "操作系统名称",
-            language: "语言",
-            describe: "描述",
-            value: "值",
-        }
-       
+        key: "*",
+        manageDomains: "管理域",
+        manageObject: "管理对象",
+        type: "管理类型",
+        architecture: "操作系统位数",
+        system: "操作系统名称",
+        language: "语言",
+        describe: "描述",
+        value: "值",
+        machineName: "设备名称",
+        ipStart: "起始ip",
+        ipEnd: "终止ip"
     }
 });
 const emptyApplication = {
@@ -165,7 +165,7 @@ const emptyApplication = {
     ipEnd: ""
 }
 //TODO 自定义一个前置过滤器，去除掉一些不需要处理的值
-const { value: newApplications } = useReactiveRecord({
+const { value: newApplications } = useOperatorLog({
     manageDomains: '',
     manageObject: "",
     type: "",
@@ -176,7 +176,7 @@ const { value: newApplications } = useReactiveRecord({
     machineName: "",
     ipStart: "",
     ipEnd: ""
-}, { describe: '新增应用范围', individual: true })
+}, { individual: true })
 const visible = ref(false)
 
 const dataValue = computed(() => {
@@ -195,4 +195,10 @@ const onSelectChange = (selectedRowKeys: Key[]) => {
 
 </script>
     
+<script lang='ts'>
+export default {
+  describe: '新增应用范围',
+  inheritAttrs: false,
+}
+</script>
 <style></style>

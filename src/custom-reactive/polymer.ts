@@ -1,6 +1,7 @@
 import { cloneDeep } from 'lodash-es'
 import { CHANGETYPE, CHANGE } from './constant'
 export function polymer(diff: Array<any>) {
+    //TODO 同一个新增 删除处理
     let result = {}
     for(let i = 0; i < diff.length; i += 1) {
         const { type, value } = diff[i]

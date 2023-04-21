@@ -1,15 +1,8 @@
-import { BASICDATAKEY } from "./constant";
+import { BASICDATAKEY, SIGNKEY } from "./constant";
 import type { CompareResult } from "./type";
-import { isObject, isSomeType } from "./utils";
-/**
- *  数据变化是为了描述谁的？
- *  { name: '', age: '' } 
- *    新增一条这个数据：新增**用户名**为name的数据 ===> name是关键字段
- *     
- *  [{ key: '', value: [{name: '', checked: true }] }]修改这样的数据： 修改设备归属，个人设备的xxx => xxx
- *   ===> 根据修改变量路径形成修改记录 value.0.name  沿着这条线去找key，这条线的最后一个才需要转义
- *  如果是基本数据类型，那它不描述任何东西，它的描述需要其他参数来补充
- */
+import { isObject, isSomeType, isValidKey } from "./utils";
+
+let currSignKey: string[] = []
 
 function getObjectDiff(diff: any, originalObj: any = {}, path: string = "") {
   let result: Array<CompareResult> = []
@@ -33,20 +26,20 @@ function getObjectDiff(diff: any, originalObj: any = {}, path: string = "") {
 }
 
 
-function compareObjects(obj1: any, obj2: any, signKey?: string): any {
+function compareObjects(obj1: any, obj2: any): any {
   let result: any = {};
   // Find added and updated properties
   // 如果是数组的话不要这样遍历
   const existIn = (obj2: any, obj2Item: any, key: string, obj1: any) => {
     if (Array.isArray(obj1) && Array.isArray(obj2)) {
-      return obj1.findIndex(item => deepEqual(item, obj2Item)) !== -1
+      return obj1.findIndex(item => shallowEqual(item, obj2Item)) !== -1
     } else {
       return obj1.hasOwnProperty(key)
     }
   }
   const findObjItem = (obj2: any, obj2Item: any, key: string, obj1: any) => {
     if (Array.isArray(obj1) && Array.isArray(obj2)) {
-      return obj1.find(item => deepEqual(item, obj2Item))
+      return obj1.find(item => shallowEqual(item, obj2Item))
     } else {
       return obj1[key]
     }
@@ -59,7 +52,7 @@ function compareObjects(obj1: any, obj2: any, signKey?: string): any {
       const value1 = findObjItem(obj2, obj2[key], key, obj1)
       const value2 = obj2[key];
       if (typeof value1 === "object" && typeof value2 === "object") {
-        const nestedDiff = compareObjects(value1, value2, signKey);
+        const nestedDiff = compareObjects(value1, value2);
         if (Object.keys(nestedDiff).length > 0) {
           result[key] = nestedDiff;
         }
@@ -73,7 +66,6 @@ function compareObjects(obj1: any, obj2: any, signKey?: string): any {
 
   // Find deleted properties
   for (let key in obj1) {
-    // boolean 怎么处理
     if (!existIn(obj1, obj1[key], key, obj2)) {
       result[key] = null;
     }
@@ -81,63 +73,94 @@ function compareObjects(obj1: any, obj2: any, signKey?: string): any {
   return result;
 }
 
-function compareArrays(arr1: any[], arr2: any[], signKey?: string): any[] {
+const wrapperArrayItem = (item: any, path: string) => {
+  let result: any = {}
+ Object.entries(item).forEach(entry => {
+    const [key, value] = entry
+    result[`${path}.${key}`] = value 
+    // if (Array.isArray(value)) {
+    //   //TODO 这里要测试
+    //   for(let i = 0; i < value.length; i += 1) {
+    //      result[`${path}.${key}`]  = wrapperArrayItem(value[i], `${path}.${key}.${i}`)
+    //   }
+    // } else {
+    //   result[`${path}.${key}`] = value 
+    // }
+  })
+  return result
+}
+function compareArrays(oldArr: any[], newArr: any[]): any[] {
   const result: Array<CompareResult> = [];
-
   // Look for deletions
-  for (let i = 0; i < arr1.length; i++) {
-    const found = arr2.find(item => deepEqual(item, arr1[i]));
+  for (let i = 0; i < oldArr.length; i++) {
+    const found = newArr.find(item => shallowEqual(item, oldArr[i]));
     if (!found) {
-      result.push({ type: "deleted", key: signKey && arr1[i][signKey], value: arr1[i] });
+      result.push({ type: "deleted", value: wrapperArrayItem(oldArr[i], i.toString()) });
     }
   }
   // Look for additions
-  for (let i = 0; i < arr2.length; i++) {
-    const found = arr1.find(item => deepEqual(item, arr2[i]));
+  for (let i = 0; i < newArr.length; i++) {
+    const found = oldArr.find(item => shallowEqual(item, newArr[i]));
     if (!found) {
-      result.push({ type: "added", key: signKey && arr2[i][signKey], value: arr2[i] });
+      result.push({ type: "added", value: wrapperArrayItem(newArr[i], i.toString()) });
     }
   }
 
   // Look for modifications
-  for (let i = 0; i < arr1.length; i++) {
-    const found = arr2.find(item => deepEqual(item, arr1[i]));
-    if (found && typeof arr1[i] === "object" && typeof found === "object") {
-      const diff = compareObjects(arr1[i], found, signKey);
+  for (let i = 0; i < oldArr.length; i++) {
+    const index = newArr.findIndex(item => shallowEqual(item, oldArr[i]));
+    const found = newArr[index]
+    if (found && typeof oldArr[i] === "object" && typeof found === "object") {
+      const diff = compareObjects(oldArr[i], found);
       if (Object.keys(diff).length > 0) {
-        const res = getObjectDiff(diff, arr1[i], i.toString())
-        //TODO 在记录的时候，属性变化，需要对变化做出描述，自动向平级/上级找关键字处理
-        // 判断value的层级， 自动的过程
-        result.push(...res.map(item => ({ ...item, key: signKey && found[signKey] })));
+        const res = getObjectDiff(diff, oldArr[i], index.toString())
+        result.push(...res);
+      } 
+      if (index !== i) {
+        // 变动了位置
+        result.push({ type: 'indexModified', value: { [index]: [i, index] }})
       }
     }
   }
   return result;
 }
 
-function deepEqual(obj1: any, obj2: any): boolean {
+function shallowEqual(obj1: any, obj2: any): boolean {
   // 只需要判断他们的key是否
   if (typeof obj1 !== "object" || typeof obj2 !== "object") {
     return obj1 === obj2;
   }
 
-  if (Object(obj1).hasOwnProperty('key') && Object(obj2).hasOwnProperty('key')) {
-    return obj1.key === obj2.key
+  if (isValidKey(SIGNKEY, obj1) && isValidKey(SIGNKEY, obj2)) {
+    return obj1[SIGNKEY] === obj2[SIGNKEY]
+  }
+
+  for(let i = 0; i < currSignKey.length; i += 1) {
+    const key = currSignKey[i]
+    if(isValidKey(key, obj1) && isValidKey(key, obj2)) {
+      return obj1[key] === obj2[key]
+    }
   }
   if (Object.keys(obj1).length !== Object.keys(obj2).length) {
     return false;
   }
 
   for (let key in obj1) {
-    if (!deepEqual(obj1[key], obj2[key])) {
-      return false;
+    if (isObject(obj1[key]) && isObject(obj2[key])) {
+      continue
+    } else if (!isObject(obj1[key]) && !isObject(obj2[key])) {
+      const res = shallowEqual(obj1[key], obj2[key])
+      if (!res) return res
+    } else {
+      return false
     }
   }
   return true;
 }
 
-export const compare = (oldValue: any, newValue: any, signKey?: string): Array<CompareResult> => {
+export const compare = (oldValue: any, newValue: any,signKey: string[]): Array<CompareResult> => {
   let result: Array<CompareResult> = []
+  currSignKey = signKey
   if (newValue === oldValue) {
     // 没有变化，对于对象还需要处理
   } else {
@@ -145,8 +168,7 @@ export const compare = (oldValue: any, newValue: any, signKey?: string): Array<C
       // 嵌套对象的处理
       if (isObject(newValue)) {
         if (Array.isArray(oldValue) && Array.isArray(newValue)) {
-          result = compareArrays(oldValue, newValue, signKey)
-          // 给一个signKey, signKey相同的对象为描述同一个日志
+          result = compareArrays(oldValue, newValue)
         } else {
           result = getObjectDiff(compareObjects(oldValue, newValue), oldValue)
         }
@@ -168,5 +190,6 @@ export const compare = (oldValue: any, newValue: any, signKey?: string): Array<C
       // 不同类型，不能比较
     }
   }
+  console.log(result)
   return result
 }

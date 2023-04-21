@@ -10,8 +10,8 @@
         <a-tab-pane key="3" tab="应用范围">
             <Applications />
         </a-tab-pane>
-       
     </a-tabs>
+    <p v-html="logDetail"></p>
     <div style="margin: 20px 0; position: absolute; bottom: 0; left: 50%; transform: translate(-50%);">
         <a-button @click="router.go(-1)">取消</a-button>
         <a-button @click="consoleLog">确定</a-button>
@@ -19,23 +19,31 @@
 </template>
     
 <script setup lang='ts'>
-import { useReactiveRecord } from '@/custom-reactive';
+import { useOperatorLog } from '@/custom-reactive';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseInfo from './BaseInfo.vue';
 import Applications from './Applications.vue';
 import FTPSettings from './FTPSettings.vue';
 
-const { log } = useReactiveRecord({}, { describe: '新增策略' })
+const { log } = useOperatorLog({})
+const logDetail = ref('')
 
 const router = useRouter()
 
 const activeKey = ref('1')
 
 const consoleLog = () => {
-    console.log(log())
+   logDetail.value = log('afterChange')
 }
 
+</script>
+
+<script lang='ts'>
+export default {
+  describe: '新增策略',
+  inheritAttrs: false,
+}
 </script>
     
 <style></style>

@@ -12,3 +12,5 @@ export const INJECTIONKEY = Symbol()
 export const CHANGETYPE = Symbol()
 export const CHANGE = Symbol()
 export const NOPARSED = "NOPARSED"
+export const WRAPVALUEKEY = 'WRAPVALUEKEY'
+export const SIGNKEY = "__SIGNKEY"

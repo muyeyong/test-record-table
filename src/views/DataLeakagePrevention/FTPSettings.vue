@@ -2,6 +2,7 @@
     <div>
         <p>FTP文件传输协议访问控制列表</p>
         <a-button @click="visible = true">增加</a-button>
+        <!-- <a-button @click="consoleLog">打印日志</a-button> -->
         <a-table :dataSource="dataSource" :columns="columns" />
 
     </div>
@@ -99,14 +100,27 @@
     </a-modal>
     <div>
         <p>其他配置</p>
+        <a-form>
+            <a-form-item label="文件服务器配置">
+                <a-select style="width: 100px;" v-model:value="otherConfig.fileServer">
+                    <a-select-option value="config1">配置1</a-select-option>
+                    <a-select-option value="config2">配置2</a-select-option>
+                </a-select>
+            </a-form-item>
+            <a-form-item label="扩展配置">
+                <a-switch v-model:checked="otherConfig.extend.enable"  />
+                <a-textarea v-show="otherConfig.extend.enable" v-model="otherConfig.extend.content"></a-textarea>
+            </a-form-item>
+        </a-form>
     </div>
 </template>
     
 <script setup lang='ts'>
-import { useReactiveRecord } from '@/custom-reactive';
+import { useOperatorLog } from '@/custom-reactive';
 import { reactive, ref } from 'vue';
 import ftpKeyMap from './ftpKeyMap.json'
-import ftpValueMap from './ftpValueMap.json'
+import addFtpValueMap from './ftpValueMap.json'
+import addFtpKeyMap from './addFtpKeyMap.json'
 
 const formStateEmpty = {
     process: {
@@ -155,7 +169,7 @@ const formStateEmpty = {
 const columns = reactive([
     {
         title: '等于',
-        dataIndex: 'equal'
+        dataIndex: 'equal1'
     },
     {
         title: '进程特征项',
@@ -232,11 +246,76 @@ const columns = reactive([
 ])
 const visible = ref(false)
 const handleOk = () => {
-    console.log(formLog())
+    visible.value = false
+    const formParsedObj = parsedObj()
+   const { FTPOptions, actions, ip, localFilePath, remoteFilePath, portRange, process, promptMessage, sensitiveRule } = formParsedObj
+   console.log(formLog())
+   const newData = {
+        key: dataSource.value.length,
+        equal1: process.equal,
+        processFeatures: process.features,
+        processFeaturesValue: process.featuresValue,
+        equal2: ip.equal,
+        ip: ip.value,
+        equal3: portRange.equal,
+        portRange: portRange.value,
+        FTPOptions: FTPOptions.join(','),
+        equal4: localFilePath.equal,
+        localFilePath: localFilePath.value,
+        equal5: remoteFilePath.equal,
+        remoteFilePath: remoteFilePath.value,
+        equal6: sensitiveRule.equal,
+        sensitiveRule: sensitiveRule.value,
+        audit: actions.includes('审计') ? "是" : "否",
+        prevent: actions.includes('阻止') ? "是" : "否",
+        syncUpdate: actions.includes('异步上传') ? "是" : "否",
+        notification: promptMessage.radio,
+        message: promptMessage.content
+   }
+   dataSource.value.push(newData)
 }
-const { value: dataSource } = useReactiveRecord([], { describe: 'FTP文件传输协议访问控制列表' })
 
-const { value: formState, log: formLog  } = useReactiveRecord(formStateEmpty, { describe: '新增FTP访问控制列表', individual: true, signKey: "key", keyMap: ftpKeyMap, valueMap: ftpValueMap })
+const consoleLog = () => {
+    console.log(otherConfigLog())
+}
+const { value: dataSource, log: tableLog } = useOperatorLog<Array<any>>([], { describe: 'FTP文件传输协议访问控制列表', keyMap: ftpKeyMap, signKey: ["key" ]})
+
+const { value: formState, log: formLog, parsedObj  } = useOperatorLog(formStateEmpty, { describe: '新增FTP访问控制列表', individual: true, signKey: ["key"], keyMap: addFtpKeyMap, valueMap: addFtpValueMap })
+
+const { value: otherConfig, log: otherConfigLog } = useOperatorLog({
+    fileServer: '',
+    extend: {
+        enable: false,
+        content: ''
+    }
+}, {
+    keyMap: {
+        fileServer: "文件服务器配置",
+        extend: {
+            enable: "开启扩展配置",
+            content: "扩展内容"
+        }
+    },
+    valueMap: {
+        fileServer: {
+            config1: "配置1",
+            config2: "配置2"
+        },
+        extend: {
+            enable: {
+                true: "开启",
+                false: "关闭"
+            }
+        }
+    }
+})
+</script>
+
+<script lang='ts'>
+export default {
+    describe: 'FTP配置',
+    inheritAttrs: false,
+}
 </script>
     
 <style></style>

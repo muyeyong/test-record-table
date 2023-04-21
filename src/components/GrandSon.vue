@@ -14,8 +14,8 @@ export default {
 </script>
 
 <script setup lang='ts'>
-import { useReactiveRecord } from '@/custom-reactive';
-const { value, log } = useReactiveRecord('', { describe: '孙子组件姓名'})
+import { useOperatorLog } from '@/custom-reactive';
+const { value, log } = useOperatorLog('', { describe: '孙子组件姓名'})
 </script>
 
 <style>

@@ -17,8 +17,8 @@ export default {
 </script>
 
 <script setup lang='ts'>
-import { useReactiveRecord } from '@/custom-reactive';
-const { value, log } = useReactiveRecord('', { describe: 'Child姓名'})
+import { useOperatorLog } from '@/custom-reactive';
+const { value, log } = useOperatorLog('', { describe: 'Child姓名'})
 const consoleLog = () => {
     console.log(log())
 }

@@ -43,6 +43,11 @@ const router = createRouter({
       path: '/AddStrategy',
       name: '增加策略',
       component: () => import('../views/DataLeakagePrevention/AddStrategy.vue')
+    },
+    {
+      path: '/MulForm',
+      name: '多个表单 Demo',
+      component: () => import('../views/MulForm/MulForm.vue')
     }
   ]
 })

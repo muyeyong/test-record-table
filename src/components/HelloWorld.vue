@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useReactiveRecord  } from '@/custom-reactive';
-const { value } = useReactiveRecord('', { describe: 'nothing'})
+import { useOperatorLog  } from '@/custom-reactive';
+const { value } = useOperatorLog('', { describe: 'nothing'})
 </script>
 
 <template>

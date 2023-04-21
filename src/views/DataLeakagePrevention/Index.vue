@@ -36,7 +36,7 @@
 </template>
     
 <script setup lang='ts'>
-import { useReactiveRecord } from '@/custom-reactive';
+import { useOperatorLog } from '@/custom-reactive';
 import { reactive, type UnwrapRef } from 'vue';
 import type { TableProps } from 'ant-design-vue';
 import { cloneDeep } from 'lodash-es'
@@ -53,7 +53,7 @@ interface DataItem {
     status: boolean
 }
 const router = useRouter()
-const { value: dataSource, log } = useReactiveRecord([
+const { value: dataSource, log } = useOperatorLog([
     {
         key: '1',
         name: '策略1',

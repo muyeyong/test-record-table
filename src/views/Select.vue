@@ -24,10 +24,10 @@
 </template>
     
 <script setup lang='ts'>
-import { useReactiveRecord } from '@/custom-reactive';
+import { useOperatorLog } from '@/custom-reactive';
 import { ref } from 'vue'
-const { value: value1, log } = useReactiveRecord('lucy', { describe: '基本下拉框'})
-const { value: value2 } = useReactiveRecord(['a1', 'b2'], { describe: '多选下拉框'})
+const { value: value1, log } = useOperatorLog('lucy', { describe: '基本下拉框'})
+const { value: value2 } = useOperatorLog(['a1', 'b2'], { describe: '多选下拉框'})
 const logDetail = ref('')
 
 const options = ref( [...Array(25)].map((_, i) => ({ value: (i + 10).toString(36) + (i + 1) })))

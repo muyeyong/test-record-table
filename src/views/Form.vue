@@ -16,7 +16,9 @@
         <a-form-item label="Resources">
             <a-radio-group v-model:value="formState.resource">
                 <a-radio value="1">Sponsor</a-radio>
-                <a-radio value="2">Venue</a-radio>
+                <a-radio value="2" >Venue
+                    <a-input v-model:value="formState.maximumFlow" />
+                </a-radio>
             </a-radio-group>
         </a-form-item>
         <a-form-item label="Activity form">
@@ -31,12 +33,11 @@
 </template>
     
 <script setup lang='ts'>
-import { reactive, ref, toRaw } from 'vue';
-import type { UnwrapRef } from 'vue';
-import { useReactiveRecord } from '@/custom-reactive';
-import keyMap from './tableKeyMap.json'
-import valueMap from './tableValueMap.json'
-
+import { ref, toRaw, computed } from 'vue';
+import { useOperatorLog } from '@/custom-reactive';
+import keyMap from './formKeyMap.json'
+import valueMap from './formValueMap.json'
+import diyValueMap from './formValueDiyMap'
 
 interface FormState {
     name: string;
@@ -45,13 +46,22 @@ interface FormState {
     resource: string;
     desc: string;
 }
-const { value: formState, log }= useReactiveRecord({
+const maximumFlow = ref(10086)
+
+const t = computed(() => {
+    return `最大流量${maximumFlow.value}KB/S`
+})
+
+// TODO 这样太麻烦了，t变动后日志也要更新
+const { value: formState, log } = useOperatorLog({
     name: '',
     delivery: false,
     type: [],
     resource: '',
     desc: '',
-}, { describe: '表单', valueMap, keyMap} );
+    maximumFlow: 0
+}, { describe: '表单', valueMap: diyValueMap([{'resource.2': t }]), keyMap} );
+
 const logDetail = ref('')
 const onSubmit = () => {
     logDetail.value = log()
