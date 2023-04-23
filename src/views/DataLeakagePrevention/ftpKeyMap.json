@@ -1,0 +1,22 @@
+{
+    "key": "*",
+    "ip": "IP/域名",
+    "equal1": "进程相等",
+    "equal2": "IP/域名相等",
+    "equal3": "端口范围相等",
+    "equal4": "本地文件路径相等",
+    "equal5": "远程文件相等",
+    "equal6": "敏感规则相等",
+    "processFeatures": "进程特征项",
+    "processFeaturesValue": "进程特征值",
+    "FTPOptions": "FTP操作",
+    "audit": "审计",
+    "prevent": "阻止",
+    "syncUpdate": "异步上传",
+    "sensitiveRule": "敏感规则",
+    "notification": "弹出消息",
+    "message": "弹出提示内容",
+    "remoteFilePath": "远程文件路径",
+    "portRange": "端口范围",
+    "localFilePath": "本地文件路径"
+}
