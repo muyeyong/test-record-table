@@ -1,31 +1,15 @@
 import { cloneDeep } from "lodash-es"
-import { watch, ref, toRaw, unref, isRef } from 'vue'
-
-const baseValueMap = {
-    type: {
-        "1": "线下",
-        "2": "促销",
-        "3": "线上"
-    },
-    resource: {
-        radio: {
-            "1": "赞助人",
-            "2": "场地"
-        }
-    },
-    delivery: {
-        "true": "是",
-        "false": "否"
-    }
-}
+import { watch, ref,  unref, type Ref } from 'vue'
+import type { DiyMap } from "./type"
 
 /**
  * 那些地方需要自定义 { path: value }
  * 我传入一个值，这个值变动后，我能否获取最新的值
  */
-const diyValueMap = (diyMapArr: Array<Record<string, any>>) => {
+const createDiyMap = (option: DiyMap) => {
+    const { baseMap, rules } = option
     const createReturn = (diy: Array<Record<string, any>>) => {
-        let diyMap = cloneDeep(baseValueMap)
+        let diyMap = cloneDeep(baseMap)
         for(const item of diy) {
           for(const[path, value] of Object.entries(item)) {
             const pathArr = path.split('.')
@@ -44,8 +28,8 @@ const diyValueMap = (diyMapArr: Array<Record<string, any>>) => {
         return diyMap
     }
     let result: { __diy: any} = { __diy: null}
-    result.__diy = createReturn(diyMapArr)
-    const mapRef = ref(diyMapArr)
+    result.__diy = createReturn(rules)
+    const mapRef = ref(rules)
     watch(mapRef, (value) => {
        result.__diy = createReturn(value)
     }, { deep: true})
@@ -53,4 +37,4 @@ const diyValueMap = (diyMapArr: Array<Record<string, any>>) => {
     return result
 }
 
-export default diyValueMap
+export default createDiyMap

@@ -2,7 +2,7 @@ import { cloneDeep } from "lodash-es"
 import { analysis  } from "./analysis"
 import { compare } from "./compare"
 import { BASICDATAKEY, CHILDHISTORYFLAG, INGOREKEY, LOGANCHOR, ROOTDESCRIBE, ROOTLOG } from "./constant"
-import { polymer } from "./polymer"
+import { addEffectChange, handleValueMapConfig, polymer } from "./preProcess"
 import type { ReactiveObjHistoryMap, ReactiveObjHistory, ComponentHistoryMap, ChildHistoryMap } from "./type"
 import { filter } from "./utils"
 
@@ -97,6 +97,7 @@ export const handleSelfHistory = <T = any>(selfHistory: ReactiveObjHistoryMap<T>
     const logCombine = new Map()
     const rootDescribe = selfHistory.get(ROOTDESCRIBE) || ""
     selfHistory = filter(selfHistory, (k, _value) => k !== ROOTDESCRIBE)
+    console.log('selfHistory', selfHistory)
     for (const log of selfHistory.values()) {
         const { parent = ROOTLOG, describe: dataDescribe = "" } = log
         const changes = handleReactiveHistory(log)
@@ -115,7 +116,7 @@ export const handleSelfHistory = <T = any>(selfHistory: ReactiveObjHistoryMap<T>
 }
 
 export const handleReactiveHistory = <T = any>(log: ReactiveObjHistory<T>) => {
-    const { value, signKey, keyMap, valueMap } = log
+    const { value, signKey, keyMap, valueMap, valueMapConfig } = log
     const valueArr = [...value]
     const firstValue = valueArr[0]
     const lastValue = valueArr[valueArr.length - 1]
@@ -125,6 +126,12 @@ export const handleReactiveHistory = <T = any>(log: ReactiveObjHistory<T>) => {
     }
     // 聚合处理，恢复层级结构
     const wrapDiff = polymer(diff)
+    console.log('before', cloneDeep(wrapDiff))
+    addEffectChange(wrapDiff)
+    if(valueMapConfig) {
+        handleValueMapConfig(wrapDiff, valueMapConfig, lastValue)
+    }
+    console.log('after', cloneDeep(wrapDiff))
     return analysis(wrapDiff, { oldObj: firstValue, newObj: lastValue }, signKey || [], keyMap, valueMap)
 }
 

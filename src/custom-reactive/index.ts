@@ -1,13 +1,16 @@
-import { getCurrentInstance, ref, watch, type ComponentInternalInstance, toRaw, provide, inject, unref, computed } from 'vue'
+import { getCurrentInstance, ref, watch, type ComponentInternalInstance, toRaw, provide, inject, unref, computed, effect } from 'vue'
 import { CHILDHISTORYFLAG, INJECTIONKEY, ROOTDESCRIBE, WRAPVALUEKEY } from './constant'
 import { handleSelfHistory, handleSubComponentHistory, insertLog, setLogType } from './log'
-import type { Option } from './type'
+import type { Option, DiyMap } from './type'
 import { addSignKey, filter, isNestObj, refreshHistory } from './utils'
 import { cloneDeep } from 'lodash-es'
 import { parse } from './parse'
 import selfKeyMap from './keyMap.json'
 import selfValueMap from './valueMap.json'
 import reactiveLog from './logObj'
+import createDiyMap from './diyMap'
+import { collectEffect } from './preProcess'
+import effectChange from './effectChange'
 
 /**
  * 
@@ -25,6 +28,9 @@ import reactiveLog from './logObj'
  * 位置变化：修改伴随位置变化，怎么处理
  *  1：修改 & 移动位置
  *  2：修改 & 移动位置
+ * valueMap需要做成一个动态的
+ *  1: 动态的部分是额外的响应式数据，根据这个数据动态生成valueMap
+ *  2：动态的部分包含在value里面，需要传入配置
  */
 export function useOperatorLog<T>(value: T, option?: Option) {
     const instance = getCurrentInstance()
@@ -54,7 +60,7 @@ export function useOperatorLog<T>(value: T, option?: Option) {
         provide(INJECTIONKEY, listenChildHistory)
     }
 
-    const refValue = reactiveLog(addSignKey(value)) // ref(value) 
+    const refValue = reactiveLog(addSignKey(value)) 
 
     const log = (type = "default") => {
         setLogType(type)
@@ -98,10 +104,15 @@ export function useOperatorLog<T>(value: T, option?: Option) {
         reportChildHistoryChange && reportChildHistoryChange(history, instance)
     }
 
+    if (option?.valueMapConfig) {
+        collectEffect(option.valueMapConfig)
+    }
+    console.log(effectChange.getEffect())
     record(refValue, value)
     watch(refValue, (newValue, _oldValue) => {
         record(refValue, newValue)
     }, { deep: true })
+
     return {
         value: refValue,
         log,

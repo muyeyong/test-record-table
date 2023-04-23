@@ -190,6 +190,5 @@ export const compare = (oldValue: any, newValue: any,signKey: string[]): Array<C
       // 不同类型，不能比较
     }
   }
-  console.log(result)
   return result
 }

@@ -14,10 +14,10 @@
             </a-checkbox-group>
         </a-form-item>
         <a-form-item label="Resources">
-            <a-radio-group v-model:value="formState.resource">
+            <a-radio-group v-model:value="formState.resource.radio">
                 <a-radio value="1">Sponsor</a-radio>
                 <a-radio value="2" >Venue
-                    <a-input v-model:value="formState.maximumFlow" />
+                    <a-input v-model:value="formState.resource.maximumFlow" />
                 </a-radio>
             </a-radio-group>
         </a-form-item>
@@ -53,14 +53,20 @@ const t = computed(() => {
 })
 
 // TODO 这样太麻烦了，t变动后日志也要更新
+/**
+ * 把value里面的值进行一个组合，需要传一个配置进去
+ * [{'path': {}}]
+ */
 const { value: formState, log } = useOperatorLog({
     name: '',
     delivery: false,
     type: [],
-    resource: '',
+    resource: {
+        radio: '',
+        maximumFlow: 1
+    },
     desc: '',
-    maximumFlow: 0
-}, { describe: '表单', valueMap: diyValueMap([{'resource.2': t }]), keyMap} );
+}, { describe: '表单', valueMap, keyMap, valueMapConfig: [{'resource.radio': ['2', '最大流量{{ resource.maximumFlow }} KB/S']}] } );
 
 const logDetail = ref('')
 const onSubmit = () => {

@@ -1,7 +1,10 @@
 {
     "desc": "描述",
     "name": "活动名称",
-    "resource": "资源",
+    "resource": {
+        "radio": "资源",
+        "maximumFlow": "*"
+    },
     "type":  "活动类型",
     "delivery": "立即寄发"
 }

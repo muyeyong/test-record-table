@@ -1,13 +1,20 @@
 import type { Ref } from "vue"
+
+export interface DiyMap {
+    isDiyMap: boolean
+    baseMap: object
+    rules: Array<Record<string, any>>
+}
 export interface Option {
     describe?: string
     signKey?: string[]
     parent?: string
     type?: string
-    keyMap?: object
-    valueMap?: object
+    keyMap?: object | DiyMap
+    valueMap?: object | DiyMap
     individual?: boolean
     refreshRecord?: boolean
+    valueMapConfig?: Array<Record<string, Array<any>>>
 }
 
 export interface CompareResult {
