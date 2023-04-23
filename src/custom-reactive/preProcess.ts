@@ -32,6 +32,8 @@ function parseNewValue(str: string, originObj: object) {
       }
       if (isValidKey(key, tempObj)) {
         tempObj = tempObj[key];
+      } else {
+        break
       }
       i += 1;
     }
@@ -73,26 +75,38 @@ function updateDiff(diff: any, path: string, oldValue: any, newValue: any) {
   }
 }
 
-function updateDiffByEffect(diff: any, path: string, effect: any, template: string) {
+function updateDiffByEffect(diff: any, path: string, effect: any, template: string, effectPath: string) {
     let tempDiff = diff
     const effectValue = effect[CHANGE]
     const effectType = effect[CHANGETYPE]
     const pathArr = path.split('.')
-    const diffPath = Object.keys(diff)
+    const lastKey = pathArr.pop() || ""
     let i = 0
-    let j = 0
-    for(;i < pathArr.length, j < diffPath.length; ) {
-        const diffKey = diffPath[j]
-        const pathKey = pathArr[i]
-        if (diffKey === WRAPVALUEKEY) {
-            j ++
-            tempDiff = tempDiff[diffKey]
-            continue
-        }
-        if (diffKey !== pathKey) {
-            
-        }
-
+    for(;i < pathArr.length; ) {
+      const key = pathArr[i]
+       if (isValidKey(WRAPVALUEKEY, tempDiff)) {
+          tempDiff = tempDiff[WRAPVALUEKEY]
+          continue
+       }
+       if (!isValidKey(key, tempDiff)) {
+          tempDiff[key] = {}
+       } 
+       i += 1
+       tempDiff = tempDiff[key]
+    }
+   const handleTemplate = (value: any) => template.replace(/{{\s*([^{}\s]*)\s*}}/g, (match, p1) => {
+     if (p1 === effectPath)
+        return value
+    })
+    if (effectType === 'modified') {
+      const [ oldValue, newValue ] = effectValue
+      const beforeValue = handleTemplate(oldValue)
+      const afterValue = handleTemplate(newValue)
+      tempDiff[lastKey] = { [CHANGE]: [beforeValue, afterValue], [CHANGETYPE]: 'modified' }
+    } else {
+      const newValue = effectValue
+      const afterValue = handleTemplate(newValue)
+      tempDiff[lastKey] = { [CHANGE]: ['', afterValue], [CHANGETYPE]: 'modified' }
     }
 }
 
@@ -137,6 +151,8 @@ const existEffect = (effectPath: string, diff: any) => {
         }
         if (isValidKey(key, tempDiff)) {
             tempDiff = tempDiff[key]
+        } else {
+          break
         }
          i += 1
     }
@@ -145,15 +161,14 @@ const existEffect = (effectPath: string, diff: any) => {
 }
 export function addEffectChange(diff: any) {
     const effects = effectChange.getEffect()
-    console.log(effects)
     for(const [effectPath, effectArr] of effects.entries()) {
         let currEffect
         if ((currEffect = existEffect(effectPath, diff))) {
            for(const effect of effectArr)  {
             const path = Object.keys(effect)[0]
-            const template = Object.values(effect)[1] as string
+            const template = Object.values(effect)[0][1]
             if (!existEffect(path, diff)) {
-                updateDiffByEffect(diff, path, currEffect, template)
+                updateDiffByEffect(diff, path, currEffect, template, effectPath)
             }
            }
         }

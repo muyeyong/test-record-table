@@ -97,7 +97,6 @@ export const handleSelfHistory = <T = any>(selfHistory: ReactiveObjHistoryMap<T>
     const logCombine = new Map()
     const rootDescribe = selfHistory.get(ROOTDESCRIBE) || ""
     selfHistory = filter(selfHistory, (k, _value) => k !== ROOTDESCRIBE)
-    console.log('selfHistory', selfHistory)
     for (const log of selfHistory.values()) {
         const { parent = ROOTLOG, describe: dataDescribe = "" } = log
         const changes = handleReactiveHistory(log)
@@ -126,12 +125,10 @@ export const handleReactiveHistory = <T = any>(log: ReactiveObjHistory<T>) => {
     }
     // 聚合处理，恢复层级结构
     const wrapDiff = polymer(diff)
-    console.log('before', cloneDeep(wrapDiff))
     addEffectChange(wrapDiff)
     if(valueMapConfig) {
         handleValueMapConfig(wrapDiff, valueMapConfig, lastValue)
     }
-    console.log('after', cloneDeep(wrapDiff))
     return analysis(wrapDiff, { oldObj: firstValue, newObj: lastValue }, signKey || [], keyMap, valueMap)
 }
 

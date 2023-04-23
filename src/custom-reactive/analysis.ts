@@ -255,6 +255,7 @@ export const analysis = (history: any, originalObj: any, signKey: string[], keyM
     for (let i = 0; i < changeStructure.length; i += 1) {
         const { originalObj: changeOriginalObj } = changeStructure[i]
         const changeDescribe = describeChange(simplifyAnalysisResult([changeStructure[i]], []))
+        console.log('changeDescribe', changeDescribe)
         //TODO 对于indexModified的变动，是否输出全部的值
         const { beforeModified, afterModified } = describeWholeObj(changeOriginalObj)
         result.push({
